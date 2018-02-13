@@ -1,0 +1,1 @@
+cmd_/home/forbes/PiDriver/cardriver.ko := arm-linux-gnueabihf-ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/forbes/PiDriver/cardriver.ko /home/forbes/PiDriver/cardriver.o /home/forbes/PiDriver/cardriver.mod.o ;  true

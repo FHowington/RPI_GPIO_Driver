@@ -1,0 +1,1 @@
+cmd_/home/forbes/PiDriver/test.ko := arm-linux-gnueabihf-ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/forbes/PiDriver/test.ko /home/forbes/PiDriver/test.o /home/forbes/PiDriver/test.mod.o ;  true
