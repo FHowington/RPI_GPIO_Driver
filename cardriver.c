@@ -46,7 +46,7 @@ static struct file_operations fops =
 	.release = dev_release,
 };
 
-int debounce_interval = 100;
+int debounce_interval = 1;
 struct timer_list timers;
 
 static int __init carchar_init(void){
@@ -101,7 +101,7 @@ static int __init carchar_init(void){
 
 	request_irq(irqUp,
 			(irq_handler_t) cargpio_irq_handler,
-			IRQF_TRIGGER_RISING,
+			IRQF_TRIGGER_HIGH,
 			"car_gpio_handler",
 			NULL);
 	request_irq(irqDown,
