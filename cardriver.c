@@ -23,10 +23,10 @@ static char data[256];
 static struct class*  carcharClass  = NULL;
 static struct device* carcharDevice = NULL;
 
-static unsigned int gpioUp = 17;
-static unsigned int gpioDown = 27;
-static unsigned int gpioLeft = 22;
-static unsigned int gpioRight = 23;
+static unsigned int gpioUp = 21;
+static unsigned int gpioDown = 20;
+static unsigned int gpioLeft = 16;
+static unsigned int gpioRight = 18;
 
 static unsigned int irqUp;
 static unsigned int irqDown;
@@ -46,36 +46,32 @@ static struct file_operations fops =
 	.release = dev_release,
 };
 
-int debounce_interval = 1;
+int debounce_interval = 20;
 struct timer_list timers;
 
 static int __init carchar_init(void){
-	printk(KERN_INFO "CarChar: Initializing the CarChar LKM\n");
+	printk(KERN_INFO "Loaded CarChar\n");
 
 	majorNumber = register_chrdev(0, DEVICE_NAME, &fops);
 	if (majorNumber<0){
 		printk(KERN_ALERT "CarChar failed to register a major number\n");
 		return majorNumber;
 	}
-	printk(KERN_INFO "CarChar: registered correctly with major number %d\n", majorNumber);
 
 	carcharClass = class_create(THIS_MODULE, CLASS_NAME);
 	if (IS_ERR(carcharClass)){
 		unregister_chrdev(majorNumber, DEVICE_NAME);
-		printk(KERN_ALERT "Failed to register device class\n");
+		printk(KERN_ALERT "CarChar Failed to register device class\n");
 		return PTR_ERR(carcharClass);
 	}
-	printk(KERN_INFO "CarChar: device class registered correctly\n");
-
 
 	carcharDevice = device_create(carcharClass, NULL, MKDEV(majorNumber, 0), NULL, DEVICE_NAME);
 	if (IS_ERR(carcharDevice)){
 		class_destroy(carcharClass);
 		unregister_chrdev(majorNumber, DEVICE_NAME);
-		printk(KERN_ALERT "Failed to create the device\n");
+		printk(KERN_ALERT "CarChar Failed to create the device\n");
 		return PTR_ERR(carcharDevice);
 	}
-	printk(KERN_INFO "CarChar: device class created correctly\n");
 
 	// Register all the GPIO pins
 	gpio_request(gpioUp, "sysfs");
@@ -120,7 +116,7 @@ static int __init carchar_init(void){
 			IRQF_TRIGGER_HIGH,
 			"car_gpio_handler",
 			NULL);
-
+	
 	return 0;
 }
 
@@ -145,40 +141,38 @@ static void __exit carchar_exit(void){
 	free_irq(irqLeft, NULL); 
 	free_irq(irqRight, NULL); 
 
-	printk(KERN_INFO "CarChar: Goodbye from the LKM!\n");
+	printk(KERN_INFO "Unregistered CarChar\n");
 }
 
 
 static int dev_open(struct inode *inodep, struct file *filep){
-	printk(KERN_INFO "CarChar: Device has been opened\n");
+	printk(KERN_INFO "CarChar opened\n");
 	return 0;
 }
 
 static int dev_release(struct inode *inodep, struct file *filep){
-	printk(KERN_INFO "CarChar: Device has been released\n");
+	printk(KERN_INFO "CarChar released\n");
 	return 0;
 }
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
 
 	int error_count = 0;
-	// copy_to_user has the format ( * to, *from, size) and returns 0 on success
 
 	if(len > numberInputs)
 		len = numberInputs;
 	error_count = copy_to_user(buffer, data, len);
 
 	if (error_count==0){        
-		numberInputs-=len;    // if true then have success
-		return (len);  // clear the position to the start and return 0
+		numberInputs-=len;
+		return (len);
 	}
 
 	else {
-		printk(KERN_INFO "Car Character Driver: Failed to send %d characters to the user\n", error_count);
+		printk(KERN_INFO "CarChar: Failed to send %d characters\n", error_count);
 		return -EFAULT;             
 	}
 }
-
 
 static irq_handler_t cargpio_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
 	if(irq == irqUp && numberInputs < 256){
@@ -230,17 +224,14 @@ void debounceHandler(unsigned long data)
 	if(data == 0)
 		enable_irq(irqUp);
 
-
 	if(data == 1)
 		enable_irq(irqDown);
 
 	if(data == 2)
 		enable_irq(irqLeft);
-
+	
 	if(data == 3)
 		enable_irq(irqRight);
-
-	printk(KERN_INFO "Timer Handler called.\n");
 }
 
 
