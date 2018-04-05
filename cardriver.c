@@ -39,6 +39,8 @@ static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static irq_handler_t  cargpio_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs);
 void debounceHandler(unsigned long data);
 
+int inUse = 0;
+
 static struct file_operations fops =
 {
 	.open = dev_open,
@@ -116,7 +118,7 @@ static int __init carchar_init(void){
 			IRQF_TRIGGER_HIGH,
 			"car_gpio_handler",
 			NULL);
-	
+
 	return 0;
 }
 
@@ -175,52 +177,59 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 }
 
 static irq_handler_t cargpio_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
-	if(irq == irqUp && numberInputs < 256){
-		disable_irq_nosync(irqUp);
-		data[numberInputs++] = 'u';
-		init_timer(&timers);
-		timers.expires = jiffies + debounce_interval;
-		timers.data = 0;
-		timers.function = debounceHandler;
-		add_timer(&timers);	
-	}
+	if(inUse == 0){
+		if(irq == irqUp && numberInputs < 256){
+			disable_irq_nosync(irqUp);
+			data[numberInputs++] = 'u';
+			init_timer(&timers);
+			timers.expires = jiffies + debounce_interval;
+			timers.data = 0;
+			timers.function = debounceHandler;
+			add_timer(&timers);
+			inUse = 1;
+		}
 
-	if(irq == irqDown && numberInputs < 256){
-		disable_irq_nosync(irqDown);
-		data[numberInputs++] = 'd';
-		init_timer(&timers);
-		timers.expires = jiffies + debounce_interval;
-		timers.data = 1;
-		timers.function = debounceHandler;
-		add_timer(&timers);	
-	}
+		if(irq == irqDown && numberInputs < 256){
+			disable_irq_nosync(irqDown);
+			data[numberInputs++] = 'd';
+			init_timer(&timers);
+			timers.expires = jiffies + debounce_interval;
+			timers.data = 1;
+			timers.function = debounceHandler;
+			add_timer(&timers);	
+			inUse = 1;
+		}
 
-	if(irq == irqLeft && numberInputs < 256){
-		disable_irq_nosync(irqLeft);
-		data[numberInputs++] = 'l';
-		init_timer(&timers);
-		timers.expires = jiffies + debounce_interval;
-		timers.data = 2;
-		timers.function = debounceHandler;
-		add_timer(&timers);	
-	}
+		if(irq == irqLeft && numberInputs < 256){
+			disable_irq_nosync(irqLeft);
+			data[numberInputs++] = 'l';
+			init_timer(&timers);
+			timers.expires = jiffies + debounce_interval;
+			timers.data = 2;
+			timers.function = debounceHandler;
+			add_timer(&timers);
+			inUse = 1;	
+		}
 
-	if(irq == irqRight && numberInputs < 256){
-		disable_irq_nosync(irqRight);
-		data[numberInputs++] = 'r';
-		init_timer(&timers);
-		timers.expires = jiffies + debounce_interval;
-		timers.data = 3;
-		timers.function = debounceHandler;
-		add_timer(&timers);	
-	}
+		if(irq == irqRight && numberInputs < 256){
+			disable_irq_nosync(irqRight);
+			data[numberInputs++] = 'r';
+			init_timer(&timers);
+			timers.expires = jiffies + debounce_interval;
+			timers.data = 3;
+			timers.function = debounceHandler;
+			add_timer(&timers);	
+			inUse = 1;
+		}
 
-	return (irq_handler_t) IRQ_HANDLED;
+		return (irq_handler_t) IRQ_HANDLED;
+	}
 }
 
 
 void debounceHandler(unsigned long data)
 {
+	inUse = 0;
 	if(data == 0)
 		enable_irq(irqUp);
 
@@ -229,7 +238,7 @@ void debounceHandler(unsigned long data)
 
 	if(data == 2)
 		enable_irq(irqLeft);
-	
+
 	if(data == 3)
 		enable_irq(irqRight);
 }
