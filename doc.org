@@ -1,0 +1,320 @@
+* Specs
+  - Elegoo UNO R3 Board
+  - HC-06 BT Chip
+  - HC-SR04 Ultrasonic Range Sensor
+  - Arduino IDE
+  - FreeRTOS library v10.0.0-9
+
+
+* Setting up the Arduino
+  - Goals:
+    1) Pair with the Bluetooth module. Pass simple messages.
+    2) Set up range sensor, send distance over BT
+  - [[https://store.arduino.cc/usa/arduino-uno-rev3][Arduino Uno Info]]
+
+** Getting FreeRTOS
+   1) Sketch > Include Library > Manage Libraries...
+   2) Search "FreeRTOS" and install library
+      (this will be used later)
+
+** Setting up the BT chip
+   - [[https://mabboud.net/how-to-hc-06-bluetooth-module-arduino/][Setting up a HC-06 Bluetooth Module With Arduino]]
+   - [[https://github.com/dennistreysa/HC-06-BT][HC-06 Library]]
+   - [[https://github.com/aron-bordin/Android-with-Arduino-Bluetooth][Another BT Library]]
+
+*** Hardware setup
+
+    |---------+----------|
+    |  HC-06  | Arduino  |
+    |---------+----------|
+    |  VCC -------> 5V   |
+    |  GND -------> GND  |
+    |  RXD -------> TX   |
+    |  TXD -------> RX   |
+    |--------------------|
+
+    Once wired, the red LED on the HC-06 will flash repeatedly. This
+    will change when paired to a master device later.
+
+    First, I had to create a udev rule that would allow me to connect
+    to the Arduino over tty without sudo-ing (in Linux). Place this
+    rule in =/etc/udev/rules.d/80-arduino.rules=:
+
+    #+BEGIN_SRC
+      KERNEL=="ttyACM0", SUBSYSTEM=="tty", SUBSYSTEMS=="usb",
+      ATTRS{idProduct}=="0243", ATTRS{idVendor}=="2341",
+      SYMLINK+="arduino", OWNER="chris", GROUP="users"
+    #+END_SRC
+
+    You may need to replace some parameters with your info. See
+    [[https://wiki.archlinux.org/index.php/udev#Accessing_firmware_programmers_and_USB_virtual_comm_devices][the Archwiki]] and [[http://www.reactivated.net/writing_udev_rules.html#syntax][here]].
+
+*** Initial BT pairing/communications
+    1) Insert this source to test true serial communication. Borrowed from
+       [[http://mabboud.net/how-to-hc-06-bluetooth-module-arduino/][here]]. Note the AT commands; "AT" should return "OK". Flash this
+       and test using the serial port in the Arduino IDE.
+       #+BEGIN_SRC c++
+     #include <SoftwareSerial.h>
+     #include <SPI.h>
+     #include <EEPROM.h>
+
+     #define BLUETOOTH_RX 10
+     #define BLUETOOTH_TX 11
+
+     SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);
+
+     void setup()
+     {
+       BT.begin(9600);
+       delay(500);
+
+       BT.print("AT");
+       delay(500);
+
+       BT.print("AT+VERSION");
+       delay(500);
+
+       String nameCommand = "AT+NAME RC-BT";
+       BT.print(nameCommand);
+       delay(500);
+
+       if (BT.available() > 0) {
+        Serial.println(BT.readString());
+       }
+     #+END_SRC
+    2) Now that we know the chip is wired correctly, we can try to
+       communicate solely over Bluetooth. Source for communicating via
+       Bluetooth:
+       #+BEGIN_SRC c++
+
+       #include <SoftwareSerial.h>
+
+       #define BLUETOOTH_RX 10
+       #define BLUETOOTH_TX 11
+
+       SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);
+
+       void setup()
+       {
+         BT.begin(9600);
+         delay(1000);
+       }
+
+       void loop()
+       {
+         BT.println("Testing 1, 2, 3.......");
+         delay(2000);
+
+         if (BT.available() > 0) {
+           BT.println("Message received!");
+           BT.println(BT.readString());
+         }
+       }
+
+       #+END_SRC
+    3) Upload/flash the code to the Arduino
+    4) Pair with a device. I used a Windows machine. Go to your
+       device settings and try to connect to the HC-06. The pairing
+       code is 1234 by default. Once paired, the red LED will stop
+       flashing and will remain solid (this may not happen until you
+       connect via PuTTY in the following steps).
+    5) Now we can communicate with the device wirelessly. Use PuTTY or
+       another program with serial communication functionality. We
+       will use a "software" or "virtual" serial connection over Bluetooth.
+    6) In PuTTY, choose "Serial" under Connection type, and type the
+       serial line identifier corresponding to your device. Set the
+       speed to 9600.
+       - NOTE: The serial line can be found under Control Panel >
+         Devices and Printers > HC-06 Properties > Services >
+         Bluetooth Services, next to "Serial port (SPP) 'Dev B'". In
+         my case, the serial line was COM3
+
+** Setting up the Ultrasonic Sensor
+   - [[http://www.micropik.com/PDF/HCSR04.pdf][Ultrasonic Range Module HC-SR04 Datasheet]]
+
+*** Hardware setup
+
+    |----------+----------|
+    |  HC-SR04 |  Arduino |
+    |----------+----------|
+    |  VCC  -------> 5V   |
+    |  GND  -------> GND  |
+    |  TRIG -------> TX   |
+    |  ECHO -------> RX   |
+    |---------------------|
+
+    The Arduino will set the TRIG pin to high/low to activate the
+    sensor. Specifically, the TRIG pin must be set to high for 10
+    microseconds. This will tell the sensor to send out a sonic
+    burst. The sensor will then receive the sound wave after some
+    time. The ECHO pin will go high, giving us the travel time in
+    microseconds.
+
+
+
+    The distance can be calculated using the speed of sound:
+    =dist = (0.034 cm/microsec)*(elapsed_time)/2=
+
+*** Sending distance over Bluetooth
+
+    This is pretty straightforward. See the code below:
+
+    #+BEGIN_SRC c++
+    // Chris Seifried
+// Forbes Turley
+
+#include <SoftwareSerial.h>
+
+#define BLUETOOTH_RX 10
+#define BLUETOOTH_TX 11
+#define SENSOR_ECHO 0
+#define SENSOR_TRIG 1
+
+SoftwareSerial BT(BLUETOOTH_RX, BLUETOOTH_TX);
+
+int elapsed;
+int dist;
+
+void setup()
+{
+  pinMode(SENSOR_ECHO, INPUT);
+  pinMode(SENSOR_TRIG, OUTPUT);
+
+  BT.begin(9600);
+  delay(1000);
+}
+
+void loop()
+{
+  // Reset trig pin
+  digitalWrite(SENSOR_TRIG, LOW);
+  delayMicroseconds(2);
+
+  // Sets the trig pin to high for 10 micro seconds
+  // Tells sensor to send out a sonic burst
+  digitalWrite(SENSOR_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(SENSOR_TRIG, LOW);
+
+  // The sensor receives the sound wave, echo pin gives us
+  // the travel time in microseconds
+  elapsed = pulseIn(SENSOR_ECHO, HIGH);
+
+  // 0.034 cm/us is speed of sound
+  // dist is in centimeters
+  dist = elapsed*0.034/2;
+
+  // Send the distance over Bluetooth
+  BT.print("Distance: ");
+  BT.println(dist);
+  delay(1000);
+}
+    #+END_SRC
+
+    Note that pulseIn() is blocking. Since the Arduino has a clock of
+    16 MHz, at a range of 4 meters, this call could block for over
+    300k cycles. We will want to use interrupts; to be done later.
+
+
+
+* Setting up the Raspberry Pi
+  - Goals:
+    1) Pair the BT module/Arduino to the Pi
+    2) Receive distance info from Arduino
+    3) Send commands/text to the Arduino
+
+  We are using a Raspberry Pi 3 Model B v1.2 running Raspian Lite
+  (Jessie), kernel version 4.9.35-v7+, to test here.
+
+** Pairing
+   1) Ensure you have the required BT software installed:
+      =sudo apt-get update && sudo apt-get upgrade
+      =sudo apt-get install bluetooth bluez=
+   2) Configure Bluetooth: (note: using version 5.23 here)
+      =sudo bluetoothctl=
+   3) Make sure your Arduino and HC-06 are on, and that your Arduino
+      is running the test code from earlier
+   4) Run the following commands:
+      =power on=
+      =agent on=
+      =default-agent=
+      =scan on=
+   5) Hopefully you will see a list of devices with MAC
+      addresses. Find your HC-06 (may have to use trial and error),
+      noting the MAC address
+   6) Pair the device, substituting the MAC address:
+      =pair xx:xx:xx:xx:xx:xx=
+      It might prompt you for the pairing PIN, which is 1234 by
+      default for our module.
+   7) You may need to =connect= in addition/in stead:
+      =connect xx:xx:xx:xx:xx:xx=
+   8) Check that the devices are paired:
+      =paired-devices=
+      This will (hopefully) list the MAC of our Bluetooth module if we
+      were successful.
+   9) Run =quit= to exit bluetoothctl
+
+   Note that it might be required to =trust= the module, and also to
+   make the Pi =pairable= and =discoverable=. Run =help= before you =quit= for
+   details. Also see [[https://www.cnet.com/how-to/how-to-setup-bluetooth-on-a-raspberry-pi-3/][here]] and [[https://lifehacker.com/everything-you-need-to-set-up-bluetooth-on-the-raspberr-1768482065][here]] for more details on the pairing
+   process.
+
+** Receiving over BT from Arduino
+   Now we have to configure the RPi's bluetooth module for data
+   transfer.
+
+   1) Run =hciconfig= to see our BT information. Make sure you see UP
+      under the device listing. If it is DOWN, run:
+      =hciconfig hci0 up=
+      to bring the device up.
+   2) We will need to set up the RFCOMM protocol to emulate a serial
+      connection between the Arduino and Pi. Edit/create the config
+      file =/etc/bluetooth/rfcomm.conf= like so:
+      #+BEGIN_SRC
+rfcomm0 {
+    bind yes;                 # Automatically bind the device at startup
+    device XX:XX:XX:XX:XX:XX; # Bluetooth address of the device (smartphone)
+    channel 1;                # RFCOMM channel for the connection
+    comment "Arduino";     # Description of the connection
+}
+      #+END_SRC
+      If you need the MAC address of the Arduino's BT module again,
+      run =hcitool scan= to find it.
+   3) Manually bind the connection, using the Arduino's BT module MAC:
+      =sudo rfcomm bind hci0 XX:XX:XX:XX:XX:XX 1=
+   4) A new device file should have been created at =/dev/rfcomm0=
+
+   Now if we try =cat /dev/rfcomm0= we should see "Distance: x"
+   streaming from the file. See [[https://www.raspberrypi.org/forums/viewtopic.php?t=125922][here]] and [[http://www.electronicwings.com/raspberry-pi/using-raspberry-pi-3-on-board-bluetooth-for-communication][here]] for help. To write to
+   the device, use ~echo "string" > /dev/rfcomm0~.
+
+   Instead of using ~cat~, we can write a simple Python script to parse
+   the data for us:
+   1) Make sure Python is installed on the system
+   2) Install the PySerial package with ~pip install pyserial~
+   3) Save the following in ~test.py~:
+      #+BEGIN_SRC python
+        import serial
+
+        ser = serial.Serial('/dev/rfcomm0', 9600)
+
+        while True:
+            result = ser.readline()
+            print(result)
+      #+END_SRC
+   4) Run ~python test.py~. This will wait for data over Bluetooth
+      - See [[https://pyserial.readthedocs.io/en/latest/shortintro.html][PySerial Docs]] for help, and [[https://raspberrypi.stackexchange.com/questions/51135/python-script-read-rfcomm-data][here]]
+
+
+* Setting up FreeRTOS
+  - Goals:
+
+  - [[https://www.freertos.org/Documentation/FreeRTOS_Reference_Manual_V10.0.0.pdf][FreeRTOS Reference Manual]]
+
+
+* Using interrupts
+  - Goals:
+
+  - [[http://gammon.com.au/interrupts][Arduino Uno interrupts (forum post)]]
+  - [[https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/][Arduino: Writing ISRs]]
+  - [[https://arduino.stackexchange.com/questions/28816/how-can-i-replace-pulsein-with-interrupts][StackExchange: Replacing pulseIn with interrupts]]
