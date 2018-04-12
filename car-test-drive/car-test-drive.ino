@@ -8,7 +8,7 @@
 #define rst 12 // Range sensor trig
 #define rse 13 // Range sensor echo
 
-int elapsed, dist;
+long elapsed, dist;
 
 void setup()
 { 
@@ -28,9 +28,10 @@ void setup()
 
 void loop()
 {
-
-  //-----( Range Sensor )-----------------------------------------
-
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
 
   // Reset trig pin
   digitalWrite(rst, LOW);
@@ -44,33 +45,23 @@ void loop()
 
   // The sensor receives the sound wave, echo pin gives us 
   // the travel time in microseconds
-  elapsed = pulseIn(rse, HIGH);
+  elapsed =   pulseIn(rse, HIGH,100000);
 
   // 0.034 cm/us is speed of sound
   // dist is in centimeters
   dist = elapsed*0.034/2;
 
   // Send the distance over Bluetooth
-  Serial.print("Distance: ");
-  Serial.println(dist);
+  Serial.print(dist);
+  Serial.print('\n');
 
-
-  //-----( Get steering input )------------------------------------
-
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, LOW);
   
   if (Serial.available() > 0) {
-    Serial.println("Message received!");
-
     // TODO: erase low writes
     char command = Serial.read();
     if (command == 'u') {
-      Serial.println("UP");
       analogWrite(en1, 255);
-      analogWrite(en2, 200);
+      analogWrite(en2, 220);
       digitalWrite(in1, HIGH);
       digitalWrite(in2, LOW);
       digitalWrite(in3, HIGH);
@@ -78,7 +69,6 @@ void loop()
     }
 
     else if (command == 'd') {
-      Serial.println("DOWN");
       analogWrite(en1, 255);
       analogWrite(en2, 200);
       digitalWrite(in1, LOW);
@@ -88,7 +78,6 @@ void loop()
     }
 
     else if (command == 'l') {
-      Serial.println("LEFT");
       analogWrite(en1, 200);
       analogWrite(en2, 200);
       digitalWrite(in1, HIGH);
@@ -107,12 +96,9 @@ void loop()
       digitalWrite(in4, LOW);
     }
 
-    else {
-      Serial.println(command);
-    }
-    delay(200);
-  }
+    delay(250);
   
+  }
 }
 
 
