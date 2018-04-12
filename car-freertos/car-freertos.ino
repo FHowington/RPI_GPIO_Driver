@@ -58,7 +58,7 @@ void loop() {}
 
 void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
 
-  int elapsed, dist;
+  long elapsed, dist;
 
   for (;;) {
     // Reset trig pin
@@ -74,7 +74,7 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     // The sensor receives the sound wave, echo pin gives us 
     // the travel time in microseconds
     // TODO: Use interrupts
-    elapsed = pulseIn(rse, HIGH);
+    elapsed = pulseIn(rse, HIGH, 100000);
   
     // 0.034 cm/us is speed of sound
     // dist is in centimeters
@@ -171,7 +171,7 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
         }
       }
       
-       vTaskDelay(DELAY(200));
+       vTaskDelay(DELAY(250));
     }
 
     vTaskDelay(10);
