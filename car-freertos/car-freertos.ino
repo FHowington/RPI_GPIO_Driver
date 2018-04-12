@@ -2,12 +2,12 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 
-#define in1 7
-#define in2 6
-#define in3 5
-#define in4 4
-#define en1 9  // Left
-#define en2 10 // Right
+#define in1 7 // Right wheel, forwards
+#define in2 6 // Right wheel, backwards
+#define in3 5 // Left wheel, forwards
+#define in4 4 // Left wheel, backwards
+#define en1 9  // Left PWM
+#define en2 10 // Right PWM
 #define rst 12 // Range sensor trig
 #define rse 13 // Range sensor echo
 #define DELAY(x) x / portTICK_PERIOD_MS // Gives us time in ms
@@ -83,7 +83,6 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     // Send the distance over Bluetooth
     // TODO: Want to make own task, may need another semaphore for dist
     if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-      Serial.print("Distance: ");
       Serial.println(dist);
       Serial.flush();
       xSemaphoreGive(xSerialSemaphore);
@@ -96,23 +95,28 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
 void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
   for (;;) {
 
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, LOW);
+
     // Handle input coming over Bluetooth
     if (Serial.available() > 0) {
 
       // TODO: Remove later
-      if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-        Serial.println("Message received!");
-        xSemaphoreGive(xSerialSemaphore);
-      }
+//      if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//        Serial.println("Message received!");
+//        xSemaphoreGive(xSerialSemaphore);
+//      }
           
       // TODO: erase low writes
       char command = Serial.read();
       if (command == 'u') {
         // TODO: Remove later
-        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.println("UP");
-          xSemaphoreGive(xSerialSemaphore);
-        }
+//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//          Serial.println("UP");
+//          xSemaphoreGive(xSerialSemaphore);
+//        }
         analogWrite(en1, 255);
         analogWrite(en2, 200);
         digitalWrite(in1, HIGH);
@@ -123,10 +127,10 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
     
       else if (command == 'd') {
         // TODO: Remove later
-        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.println("DOWN");
-          xSemaphoreGive(xSerialSemaphore);
-        }
+//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//          Serial.println("DOWN");
+//          xSemaphoreGive(xSerialSemaphore);
+//        }
         analogWrite(en1, 255);
         analogWrite(en2, 200);
         digitalWrite(in1, LOW);
@@ -137,10 +141,10 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
     
       else if (command == 'l') {
         // TODO: Remove later
-        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.println("LEFT");
-          xSemaphoreGive(xSerialSemaphore);
-        }
+//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//          Serial.println("LEFT");
+//          xSemaphoreGive(xSerialSemaphore);
+//        }
         analogWrite(en1, 200);
         analogWrite(en2, 200);
         digitalWrite(in1, HIGH);
@@ -151,10 +155,10 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
     
       else if (command == 'r') {
         // TODO: Remove later
-        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.println("RIGHT");
-          xSemaphoreGive(xSerialSemaphore);
-        }
+//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//          Serial.println("RIGHT");
+//          xSemaphoreGive(xSerialSemaphore);
+//        }
         analogWrite(en1, 200);
         analogWrite(en2, 200);
         digitalWrite(in1, LOW);
@@ -165,13 +169,13 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
     
       else {
         // TODO: Remove later
-        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.println(command);
-          xSemaphoreGive(xSerialSemaphore);
-        }
+//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+//          Serial.println(command);
+//          xSemaphoreGive(xSerialSemaphore);
+//        }
       }
       
-       vTaskDelay(DELAY(250));
+       vTaskDelay(DELAY(100));
     }
 
     vTaskDelay(10);
