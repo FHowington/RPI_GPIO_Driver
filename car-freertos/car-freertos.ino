@@ -94,7 +94,6 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
 
 void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
   for (;;) {
-
     digitalWrite(in1, LOW);
     digitalWrite(in2, LOW);
     digitalWrite(in3, LOW);
@@ -102,21 +101,10 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
 
     // Handle input coming over Bluetooth
     if (Serial.available() > 0) {
-
-      // TODO: Remove later
-//      if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//        Serial.println("Message received!");
-//        xSemaphoreGive(xSerialSemaphore);
-//      }
           
       // TODO: erase low writes
       char command = Serial.read();
       if (command == 'u') {
-        // TODO: Remove later
-//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//          Serial.println("UP");
-//          xSemaphoreGive(xSerialSemaphore);
-//        }
         analogWrite(en1, 255);
         analogWrite(en2, 200);
         digitalWrite(in1, HIGH);
@@ -126,11 +114,6 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       }
     
       else if (command == 'd') {
-        // TODO: Remove later
-//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//          Serial.println("DOWN");
-//          xSemaphoreGive(xSerialSemaphore);
-//        }
         analogWrite(en1, 255);
         analogWrite(en2, 200);
         digitalWrite(in1, LOW);
@@ -140,11 +123,6 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       }
     
       else if (command == 'l') {
-        // TODO: Remove later
-//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//          Serial.println("LEFT");
-//          xSemaphoreGive(xSerialSemaphore);
-//        }
         analogWrite(en1, 200);
         analogWrite(en2, 200);
         digitalWrite(in1, HIGH);
@@ -154,11 +132,6 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       }
     
       else if (command == 'r') {
-        // TODO: Remove later
-//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//          Serial.println("RIGHT");
-//          xSemaphoreGive(xSerialSemaphore);
-//        }
         analogWrite(en1, 200);
         analogWrite(en2, 200);
         digitalWrite(in1, LOW);
@@ -168,11 +141,7 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       }
     
       else {
-        // TODO: Remove later
-//        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-//          Serial.println(command);
-//          xSemaphoreGive(xSerialSemaphore);
-//        }
+        // Do nothing
       }
       
        vTaskDelay(DELAY(100));
