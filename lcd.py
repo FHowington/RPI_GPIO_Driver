@@ -93,6 +93,8 @@ def main():
   ser = serial.Serial('/dev/rfcomm0', 9600)
   buttonEvents = open("/dev/carchardev","w+")
 
+  lcd_string("Getting weather!", LCD_LINE_2)
+
   while True:
     result = ser.readline()
     if len(result) <= 2:
@@ -102,7 +104,7 @@ def main():
 
     dtype = result[0]
     data = result[1:-2]
-	
+
     if dtype == 'd':
         if int(data) < 300:
             print("Distance now " + data)
