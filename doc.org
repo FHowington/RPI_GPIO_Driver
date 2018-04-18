@@ -216,6 +216,8 @@ void loop()
     300k cycles. We will want to use interrupts; to be done later.
 
 
+** Setting up the DHT11 Weather Sensor
+   See [[https://desire.giesecke.tk/index.php/2018/01/30/esp32-dht11/][here]] and [[https://learn.adafruit.com/dht][here]] and [[http://www.electronics-lab.com/project/arduino-weather-station-using-dht11/][here]] for more info
 
 * Setting up the Raspberry Pi
   - Goals:

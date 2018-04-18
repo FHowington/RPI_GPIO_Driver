@@ -1,9 +1,7 @@
 #include <SoftwareSerial.h>
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
-#include <Adafruit_Sensor.h> // Unified Sensor Library, for the weather sensor
-#include <DHT.h>             // For the weather sensor
-#include <DHT_U.h>           // Also for the weather sensor
+#include <Dht11.h>
 
 #define in1 7 // Right wheel, forwards
 #define in2 6 // Right wheel, backwards
@@ -13,16 +11,15 @@
 #define en2 10 // Right PWM
 #define rst 12 // Range sensor trig
 #define rse 13 // Range sensor echo
-#define ws  3 // Temp/Humidity sensor
-#define DHTTYPE DHT11 // For the DHT library
+#define ws  2  // Temp/Humidity sensor
 #define DELAY(x) x / portTICK_PERIOD_MS // Gives us time in ticks from ms
 
 SemaphoreHandle_t xSerialSemaphore;
-DHT dht(ws, DHTTYPE);
+Dht11 dht(ws);
 
 void task_RecvInput(void *pvParameters);
 void task_SendDistance(void *pvParameters);
-void task_SendWeatherData(void *pvParameters);
+//void task_SendWeatherData(void *pvParameters);
 
 void setup() {
   pinMode(in1, OUTPUT);
@@ -36,7 +33,6 @@ void setup() {
   pinMode(rst, OUTPUT);
   
   Serial.begin(9600);
-  dht.begin();
   delay(1000);
 
   // Initialize the semaphore
@@ -71,6 +67,7 @@ void setup() {
 
 void loop() {}
 
+
 void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
   
   long elapsed, dist;
@@ -98,6 +95,7 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     // Send the distance over Bluetooth
     // TODO: Want to make own task, may need another semaphore for dist
     if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+      Serial.print("d");
       Serial.println(dist);
       Serial.flush();
       xSemaphoreGive(xSerialSemaphore);
@@ -169,36 +167,42 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
 // Periodic
 void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
   TickType_t xLastWakeTime;     // The time at which the task was last unblocked
-  const TickType_t xFreq = DELAY(60000);  // Cycle time period - 1 minute
-  float hum, temp;
-  char str_hum[6];
-  char str_temp[6];
+  const TickType_t xFreq = DELAY(30000);  // Cycle time period
+
+  // Initialize xLastWakeTime with the current time in ticks
+  xLastWakeTime = xTaskGetTickCount();
   
   for (;;) {
     // Make this task periodic. This will block for xFreq ticks
     vTaskDelayUntil(&xLastWakeTime, xFreq); 
 
-    // Read in float values
-    hum = dht.readHumidity();
-    temp = dht.readTemperature();
+    // Read the weather data from pin
+    switch (dht.read()) {
+      case Dht11::OK:
+        if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
+          Serial.print("w");
+          Serial.print(dht.getTemperature());
+          Serial.print((char)223); // degree symbol (for lcd)
+          Serial.print("C, ");
+          Serial.print(dht.getHumidity());
+          Serial.println("%");
+          Serial.flush();
+          xSemaphoreGive(xSerialSemaphore);
+        }
+        
+        break;
 
-    // Convert floats to strings
-    // Params: __val, __width, __prec, __s
-    dtostrf(hum, 2, 0, str_hum);
-    dtostrf(temp, 5, 1, str_temp);
+//      case Dht11::ERROR_CHECKSUM:
+//        Serial.println("Checksum error");
+//        break;
+//
+//      case Dht11::ERROR_TIMEOUT:
+//        Serial.println("Timeout error");
+//        break;
 
-    
-    if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-      Serial.print(str_temp);
-      Serial.print((char)223); // degree symbol (for lcd)
-      Serial.print("C, ");
-      Serial.print(str_hum);
-      Serial.println("%");  
-      Serial.flush();
-      xSemaphoreGive(xSerialSemaphore);
+      default:
+        //Serial.println("Unknown error");
+        break;
     }
-    
   }
-
-  vTaskDelay(10);
 }
