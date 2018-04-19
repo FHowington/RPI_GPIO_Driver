@@ -3,8 +3,7 @@
 #include <semphr.h>             // Semaphores from FreeRTOS
 #include <Dht11.h>              // Weather sensor library (DHT11)
 
-// Uncomment to run benchmarks
-#define TEST
+#define TESTING 1
 
 // Define pins
 #define in1 7  // Right wheel, forwards
@@ -17,7 +16,7 @@
 #define rse 13 // Range sensor echo
 #define ws  2  // Temp/Humidity sensor
 
-#define DELAY(x) x / portTICK_PERIOD_MS // Gives us time in ticks from ms
+#define MS(x) x / portTICK_PERIOD_MS // Gives us time in ticks from ms
 
 SemaphoreHandle_t xSerialSemaphore; // Only 1 task can use serial at a time
 Dht11 dht(ws);                      // Interface for the weather sensor
@@ -73,10 +72,18 @@ void setup() {
 void loop() {} // Instead, each task has its own loop
 
 void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
+  #ifdef TESTING
+    unsigned long start, finish, ttime, id; // For testing
+    id = 0;
+  #endif
   
-  long elapsed, dist;
+  long elapsed, dist; // For the range sensor
 
   for (;;) {
+    #ifdef TESTING
+      start = micros();
+    #endif
+    
     // Reset trig pin
     digitalWrite(rst, LOW);
     delayMicroseconds(2);
@@ -97,10 +104,27 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     dist = elapsed*0.034/2;
   
     // Send the distance over Bluetooth
+    // TODO: make critical section when printing?
     if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
       Serial.print("d");
       Serial.println(dist);
       Serial.flush();
+
+      #ifdef TESTING
+        finish = micros();
+        ttime = finish-start;
+        
+        Serial.print("t");
+        Serial.print(id++);
+        Serial.print(",SendDistance,");
+        Serial.print(start);
+        Serial.print(",");
+        Serial.print(finish);
+        Serial.print(",");
+        Serial.println(ttime);
+        Serial.flush();
+      #endif
+
       xSemaphoreGive(xSerialSemaphore);
     }
   
@@ -109,8 +133,18 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
 }
 
 void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
+  
+  #ifdef TESTING
+    unsigned long start, finish, ttime, id; // For testing
+    id = 0;
+  #endif
+  
   for (;;) {
 
+    #ifdef TESTING
+    start = micros();
+    #endif
+  
     // Handle input coming over Bluetooth
     if (Serial.available() > 0) {
           
@@ -155,7 +189,7 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
         // Do nothing
       }
       
-       vTaskDelay(DELAY(125));
+       vTaskDelay(MS(125));
     }
 
     // If no driving commands, just stop
@@ -166,15 +200,39 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       digitalWrite(in4, LOW);
     }
 
+    #ifdef TESTING
+      finish = micros();
+      ttime = finish-start;
+      
+      if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 10) == pdTRUE) {
+        Serial.print("t");
+        Serial.print(id++);
+        Serial.print(",RecvInput,");
+        Serial.print(start);
+        Serial.print(",");
+        Serial.print(finish);
+        Serial.print(",");
+        Serial.println(ttime);
+        Serial.flush();
+        xSemaphoreGive(xSerialSemaphore);
+      }
+    #endif
+
     // Need this to reduce stutter
     vTaskDelay(10);
+
   }
 }
 
 // Periodic
 void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
+  #ifdef TESTING
+    unsigned long start, finish, ttime, id; // For testing
+    id = 0;
+  #endif
+  
   TickType_t xLastWakeTime;               // The time at which the task was last unblocked
-  const TickType_t xFreq = DELAY(30000);  // Cycle time period
+  const TickType_t xFreq = MS(30000);     // Cycle time period
 
   // Initialize xLastWakeTime with the current time in ticks
   xLastWakeTime = xTaskGetTickCount();
@@ -182,6 +240,10 @@ void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
   for (;;) {
     // Make this task periodic. This will block for xFreq ticks
     vTaskDelayUntil(&xLastWakeTime, xFreq); 
+
+    #ifdef TESTING
+      start = micros();
+    #endif
 
     // Read the weather data from pin
     switch (dht.read()) {
@@ -211,5 +273,26 @@ void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
         //Serial.println("Unknown error");
         break;
     }
+
+
+
+    #ifdef TESTING
+      finish = micros();
+      ttime = finish-start;
+      
+      if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 10) == pdTRUE) {
+        Serial.print("t");
+        Serial.print(id++);
+        Serial.print(",SendWeatherData,");
+        Serial.print(start);
+        Serial.print(",");
+        Serial.print(finish);
+        Serial.print(",");
+        Serial.println(ttime);
+        Serial.flush();
+        xSemaphoreGive(xSerialSemaphore);
+      }
+    #endif
+    
   }
 }

@@ -116,6 +116,9 @@ def main():
         print("Weather found")
         lcd_string(str(data), LCD_LINE_2)
 
+    elif dtype == 't':
+        print(str(data))
+
     ser.write(buttonEvents.read())
     #time.sleep(3) # 3 second delay
 
