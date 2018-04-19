@@ -1,21 +1,26 @@
-#include <SoftwareSerial.h>
-#include <Arduino_FreeRTOS.h>
-#include <semphr.h>
-#include <Dht11.h>
+#include <SoftwareSerial.h>     // Serial comunication library
+#include <Arduino_FreeRTOS.h>   // FreeRTOS
+#include <semphr.h>             // Semaphores from FreeRTOS
+#include <Dht11.h>              // Weather sensor library (DHT11)
 
-#define in1 7 // Right wheel, forwards
-#define in2 6 // Right wheel, backwards
-#define in3 5 // Left wheel, forwards
-#define in4 4 // Left wheel, backwards
+// Uncomment to run benchmarks
+#define TEST
+
+// Define pins
+#define in1 7  // Right wheel, forwards
+#define in2 6  // Right wheel, backwards
+#define in3 5  // Left wheel, forwards
+#define in4 4  // Left wheel, backwards
 #define en1 9  // Left PWM
 #define en2 10 // Right PWM
 #define rst 12 // Range sensor trig
 #define rse 13 // Range sensor echo
 #define ws  2  // Temp/Humidity sensor
+
 #define DELAY(x) x / portTICK_PERIOD_MS // Gives us time in ticks from ms
 
-SemaphoreHandle_t xSerialSemaphore;
-Dht11 dht(ws);
+SemaphoreHandle_t xSerialSemaphore; // Only 1 task can use serial at a time
+Dht11 dht(ws);                      // Interface for the weather sensor
 
 void task_RecvInput(void *pvParameters);
 void task_SendDistance(void *pvParameters);
@@ -42,7 +47,7 @@ void setup() {
       xSemaphoreGive(xSerialSemaphore);
   }
 
-  // Create tasks
+  // Create tasks in the OS
   xTaskCreate(task_RecvInput,
               (const portCHAR *)"RecvInput",
               128,
@@ -65,8 +70,7 @@ void setup() {
               NULL);
 }
 
-void loop() {}
-
+void loop() {} // Instead, each task has its own loop
 
 void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
   
@@ -93,7 +97,6 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     dist = elapsed*0.034/2;
   
     // Send the distance over Bluetooth
-    // TODO: Want to make own task, may need another semaphore for dist
     if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
       Serial.print("d");
       Serial.println(dist);
@@ -107,15 +110,10 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
 
 void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
   for (;;) {
-    digitalWrite(in1, LOW);
-    digitalWrite(in2, LOW);
-    digitalWrite(in3, LOW);
-    digitalWrite(in4, LOW);
 
     // Handle input coming over Bluetooth
     if (Serial.available() > 0) {
           
-      // TODO: erase low writes
       char command = Serial.read();
       if (command == 'u') {
         analogWrite(en1, 255);
@@ -157,16 +155,25 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
         // Do nothing
       }
       
-       vTaskDelay(DELAY(100));
+       vTaskDelay(DELAY(125));
     }
 
+    // If no driving commands, just stop
+    else {
+      digitalWrite(in1, LOW);
+      digitalWrite(in2, LOW);
+      digitalWrite(in3, LOW);
+      digitalWrite(in4, LOW);
+    }
+
+    // Need this to reduce stutter
     vTaskDelay(10);
   }
 }
 
 // Periodic
 void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
-  TickType_t xLastWakeTime;     // The time at which the task was last unblocked
+  TickType_t xLastWakeTime;               // The time at which the task was last unblocked
   const TickType_t xFreq = DELAY(30000);  // Cycle time period
 
   // Initialize xLastWakeTime with the current time in ticks
