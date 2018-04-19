@@ -90,7 +90,7 @@ def main():
   # Initialise display
   lcd_init()
   import serial
-  ser = serial.Serial('/dev/rfcomm0', 9600)
+  ser = serial.Serial('/dev/rfcomm0', 9600, timeout=0.1)
   buttonEvents = open("/dev/carchardev","w+")
 
   lcd_string("Getting weather!", LCD_LINE_2)
