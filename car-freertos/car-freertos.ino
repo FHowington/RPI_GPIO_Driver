@@ -19,7 +19,7 @@ Dht11 dht(ws);
 
 void task_RecvInput(void *pvParameters);
 void task_SendDistance(void *pvParameters);
-//void task_SendWeatherData(void *pvParameters);
+void task_SendWeatherData(void *pvParameters);
 
 void setup() {
   pinMode(in1, OUTPUT);
