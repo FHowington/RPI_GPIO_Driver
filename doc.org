@@ -160,7 +160,7 @@
     This is pretty straightforward. See the code below:
 
     #+BEGIN_SRC c++
-    // Chris Seifried
+// Chris Seifried
 // Forbes Turley
 
 #include <SoftwareSerial.h>
@@ -218,6 +218,7 @@ void loop()
 
 ** Setting up the DHT11 Weather Sensor
    See [[https://desire.giesecke.tk/index.php/2018/01/30/esp32-dht11/][here]] and [[https://learn.adafruit.com/dht][here]] and [[http://www.electronics-lab.com/project/arduino-weather-station-using-dht11/][here]] for more info
+
 
 * Setting up the Raspberry Pi
   - Goals:
@@ -309,14 +310,12 @@ rfcomm0 {
 
 
 * Setting up FreeRTOS
-  - Goals:
+
 
   - [[https://www.freertos.org/Documentation/FreeRTOS_Reference_Manual_V10.0.0.pdf][FreeRTOS Reference Manual]]
 
 
 * Using interrupts
-  - Goals:
-
   - [[http://gammon.com.au/interrupts][Arduino Uno interrupts (forum post)]]
   - [[https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/][Arduino: Writing ISRs]]
   - [[https://arduino.stackexchange.com/questions/28816/how-can-i-replace-pulsein-with-interrupts][StackExchange: Replacing pulseIn with interrupts]]

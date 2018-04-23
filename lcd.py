@@ -106,7 +106,7 @@ def main():
     data = result[1:-2]
 
     if dtype == 'd':
-        if int(data) < 300:
+        if int(data) > 0 and int(data) < 300:
             print("Distance now " + data)
             lcd_string("Distance:" + str(data) + "cm" ,LCD_LINE_1)
         else:

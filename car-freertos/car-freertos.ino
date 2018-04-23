@@ -6,6 +6,7 @@
 #define TESTING 1
 
 // Define pins
+#define bl  8  // For the bell/horn
 #define in1 7  // Right wheel, forwards
 #define in2 6  // Right wheel, backwards
 #define in3 5  // Left wheel, forwards
