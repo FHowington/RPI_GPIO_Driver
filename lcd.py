@@ -102,22 +102,19 @@ def main():
 
     ser.flushInput()
 
-    dtype = result[0]
-    data = result[1:-2]
+    dtype = result[:3]
+    data = result[3:-2]
 
-    if dtype == 'd':
+    if dtype == "<d>":
         if int(data) > 0 and int(data) < 300:
             print("Distance now " + data)
             lcd_string("Distance:" + str(data) + "cm" ,LCD_LINE_1)
         else:
             lcd_string("Distance: FAR", LCD_LINE_1)
 
-    elif dtype == 'w':
+    elif dtype == "<w>":
         print("Weather found")
         lcd_string(str(data), LCD_LINE_2)
-
-    elif dtype == 't':
-        print(str(data))
 
     ser.write(buttonEvents.read())
     #time.sleep(3) # 3 second delay

@@ -107,7 +107,7 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
     // Send the distance over Bluetooth
     // TODO: make critical section when printing?
     if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-      Serial.print("d");
+      Serial.print("<d>");
       Serial.println(dist);
       Serial.flush();
 
@@ -115,14 +115,16 @@ void task_SendDistance( void *pvParameters __attribute__((unused)) ) {
         finish = micros();
         ttime = finish-start;
         
-        Serial.print("t");
+        Serial.print("<t>");
         Serial.print(id++);
         Serial.print(",SendDistance,");
         Serial.print(start);
         Serial.print(",");
         Serial.print(finish);
         Serial.print(",");
-        Serial.println(ttime);
+        Serial.print(ttime);
+        Serial.print(",");
+        Serial.println(dist);
         Serial.flush();
       #endif
 
@@ -206,7 +208,7 @@ void task_RecvInput( void *pvParameters __attribute__((unused)) ) {
       ttime = finish-start;
       
       if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 10) == pdTRUE) {
-        Serial.print("t");
+        Serial.print("<t>");
         Serial.print(id++);
         Serial.print(",RecvInput,");
         Serial.print(start);
@@ -250,7 +252,7 @@ void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
     switch (dht.read()) {
       case Dht11::OK:
         if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 5) == pdTRUE) {
-          Serial.print("w");
+          Serial.print("<w>");
           Serial.print(dht.getTemperature());
           Serial.print((char)223); // degree symbol (for lcd)
           Serial.print("C, ");
@@ -282,7 +284,7 @@ void task_SendWeatherData( void *pvParameters __attribute__((unused)) ) {
       ttime = finish-start;
       
       if (xSemaphoreTake(xSerialSemaphore, (TickType_t) 10) == pdTRUE) {
-        Serial.print("t");
+        Serial.print("<t>");
         Serial.print(id++);
         Serial.print(",SendWeatherData,");
         Serial.print(start);
